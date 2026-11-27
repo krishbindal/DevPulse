@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
+from .inventory import summarize_tree
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -45,7 +46,7 @@ def fetch_json(endpoint, fetch):
     return data
 
 
-def scan(value, fetch=urlopen, *, include_languages=False):
+def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False):
     owner, repo = parse_repository(value)
     endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
     data = fetch_json(endpoint, fetch)
@@ -76,4 +77,16 @@ def scan(value, fetch=urlopen, *, include_languages=False):
                                    'total_bytes': None, 'entries': None}
     else:
         result['languages'] = {'status': 'not_analyzed', 'entries': None, 'total_bytes': None}
+    result['inventory'] = {'status':'not_analyzed'}
+    if include_inventory:
+        branch = data.get('default_branch')
+        if not isinstance(branch, str) or not branch:
+            result['inventory'] = {'status':'unavailable','error':'Default branch unavailable.'}
+        else:
+            source = endpoint + '/git/trees/' + quote(branch, safe='') + '?recursive=1'
+            try:
+                result['inventory'] = summarize_tree(fetch_json(source, fetch))
+                result['inventory'].update(source=source, branch=branch)
+            except (ScanError, ValueError) as exc:
+                result['inventory'] = {'status':'unavailable','source':source,'error':str(exc)}
     return result
