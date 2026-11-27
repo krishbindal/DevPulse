@@ -11,13 +11,13 @@ SHA = re.compile(r'[a-f0-9]{40}\Z')
 # Conservative display filter: non-version specs (URLs, aliases, git, paths) are redacted.
 VERSION = re.compile(r'[~^<>=vVxX*0-9.][0-9a-zA-Z.*~^<>=| +\-]{0,127}\Z')
 
-def decode_manifest(blob, expected_sha):
+def decode_manifest(blob, expected_sha, *, max_bytes=MAX_MANIFEST_BYTES):
     if (not isinstance(blob, dict) or blob.get('sha') != expected_sha
             or blob.get('encoding') != 'base64' or not isinstance(blob.get('content'),str)
-            or type(blob.get('size')) is not int or not 0 <= blob['size'] <= MAX_MANIFEST_BYTES):
-        raise ValueError('Unsupported or oversized npm manifest blob.')
+            or type(blob.get('size')) is not int or not 0 <= blob['size'] <= max_bytes):
+        raise ValueError('Unsupported or oversized manifest blob.')
     encoded = ''.join(blob['content'].split())
-    if len(encoded) > 4 * ((MAX_MANIFEST_BYTES + 2) // 3):
+    if len(encoded) > 4 * ((max_bytes + 2) // 3):
         raise ValueError('Encoded npm manifest exceeded size limit.')
     raw = base64.b64decode(encoded, validate=True)
     if len(raw) != blob['size']:

@@ -11,7 +11,8 @@
 - [x] Implement latest public default-branch Actions run metadata (PR #4, CI run 46051011803).
 - [x] Implement root npm dependency declarations from an immutable manifest blob (PR #5, CI run 46051141619).
 - [x] Implement narrow root Python requirements declaration analysis (PR #6, CI run 46051342329).
-- [ ] Parse lockfile versions and additional Python manifest formats; aggregate CI evidence only when justified.
+- [x] Implement bounded npm package-lock v2/v3 version evidence (pending PR CI).
+- [ ] Integrate trustworthy lockfile evidence into opt-in advisory lookup; additional Python formats and CI aggregation.
 - [x] Implement opt-in OSV advisory ID lookup for supported exact declarations (PR #7, CI run 46051470056).
 - [ ] Verify live OSV and GitHub runtime integration, parse lockfiles, add static security checks.
 - [ ] Add production-grade rate limiting, caching, authorization if needed, and hardened web deployment.
@@ -19,4 +20,4 @@
 - [ ] Recruiter case study, architecture diagram, real benchmarks and authorized demo deployment.
 
 ## Progress
-Local prototype created; eight local unit tests passed on mocked inputs. Public repository created by owner. Baseline PR #1 merged after successful GitHub Actions run 46050193986. Language breakdown merged after successful CI run 46050493201. Repository inventory and JSON export merged after successful CI run 46050891136. Latest Actions metadata and HTTP integration tests merged after successful CI run 46051011803. Root npm declarations merged after successful CI run 46051141619 (41 tests). Root Python requirements merged after successful CI run 46051342329 (48 tests). Opt-in OSV lookup merged after successful CI run 46051470056. Advisory coverage accuracy and interrupted response handling proposed. No live scan or deployed service verified.
+Local prototype created; eight local unit tests passed on mocked inputs. Public repository created by owner. Baseline PR #1 merged after successful GitHub Actions run 46050193986. Language breakdown merged after successful CI run 46050493201. Repository inventory and JSON export merged after successful CI run 46050891136. Latest Actions metadata and HTTP integration tests merged after successful CI run 46051011803. Root npm declarations merged after successful CI run 46051141619 (41 tests). Root Python requirements merged after successful CI run 46051342329 (48 tests). Opt-in OSV lookup merged after successful CI run 46051470056. Advisory coverage accuracy merged after successful CI run 46051939364 (61 tests on branch). Root npm lockfile evidence proposed. No live scan or deployed service verified.
