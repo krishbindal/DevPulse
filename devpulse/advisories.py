@@ -1,4 +1,4 @@
-"""Opt-in, bounded OSV lookup for simple exact dependency declarations."""
+"""Opt-in, bounded OSV lookup for supported exact declarations and npm lockfile records."""
 import json
 import re
 from http.client import HTTPException
@@ -13,6 +13,11 @@ ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z')
 
 def lookup_advisories(report, fetch=urlopen):
     candidates = set()
+    origins = {}
+    def add(ecosystem, name, version, origin):
+        key = (ecosystem,name,version)
+        candidates.add(key)
+        origins.setdefault(key,set()).add(origin)
     coverage = {}
     for key, ecosystem, version_key, version_pattern in (
         ('python_dependencies','PyPI','declared_version',PY_VERSION),
@@ -25,7 +30,7 @@ def lookup_advisories(report, fetch=urlopen):
         for item in entries:
             version = item[version_key]
             if version and version_pattern.fullmatch(version):
-                candidates.add((ecosystem,item['name'],version))
+                add(ecosystem,item['name'],version,'declaration')
             else:
                 excluded += 1
         coverage[ecosystem] = {
@@ -35,19 +40,35 @@ def lookup_advisories(report, fetch=urlopen):
             'entries_truncated':bool(source.get('entries_truncated')),
             'unsupported_lines':source.get('counts',{}).get('unsupported_lines',0),
         }
+    lock = report.get('npm_lockfile',{})
+    lock_status = lock.get('status','not_analyzed')
+    lock_entries = lock.get('entries') or []
+    lock_ineligible = 0
+    for item in lock_entries:
+        version = item.get('locked_version')
+        if lock_status in ('ok','partial') and isinstance(version,str) and NPM_VERSION.fullmatch(version):
+            add('npm',item['name'],version,'lockfile')
+        else:
+            lock_ineligible += 1
+    lock_coverage = {'status':lock_status,'observed_unique_pairs':len(lock_entries),
+                     'ineligible_pairs':lock_ineligible,'excluded_records':lock.get('excluded_records',0),
+                     'entries_truncated':bool(lock.get('entries_truncated'))}
+    lock_limited = (lock_status not in ('ok','not_found') or lock_coverage['excluded_records']
+                    or lock_coverage['entries_truncated'] or lock_ineligible)
     coverage_limited = any(
         item['manifest_status'] not in ('ok','not_found')
         or item['entries_truncated'] or item['ineligible_observed_declarations']
         or item['unsupported_lines']
         for item in coverage.values()
-    )
-    selected = sorted(candidates)[:MAX_QUERIES]
-    result = {'source':ENDPOINT,'scope':'supported exact declarations in root manifests only; not installed dependencies',
+    ) or bool(lock_limited)
+    # When capped, favor lockfile evidence, then exact declarations; output is deterministic.
+    selected = sorted(candidates,key=lambda key:('lockfile' not in origins[key],key))[:MAX_QUERIES]
+    result = {'source':ENDPOINT,'scope':'supported exact root declarations and npm lockfile assertions only; not installed dependencies',
               'eligible_unique_versions':len(candidates),'queried_versions':0,
               'entries':[],'candidate_limit_reached':len(candidates)>MAX_QUERIES,
-              'coverage':coverage,'coverage_limited':coverage_limited}
+              'coverage':coverage,'lockfile_coverage':lock_coverage,'coverage_limited':coverage_limited}
     if not selected:
-        if all(item['manifest_status'] in ('unavailable','not_analyzed') for item in coverage.values()):
+        if all(item['manifest_status'] in ('unavailable','not_analyzed') for item in coverage.values()) and lock_status in ('unavailable','not_analyzed'):
             result.update(status='unavailable',error='No dependency manifest evidence available to query.')
         else:
             result['status']='partial' if coverage_limited else 'not_applicable'
@@ -77,7 +98,7 @@ def lookup_advisories(report, fetch=urlopen):
                 raise ValueError('invalid pagination')
             incomplete=bool(token) or len(ids)>100
             partial=partial or incomplete
-            entries.append({'ecosystem':ecosystem,'name':name,'version':version,
+            entries.append({'ecosystem':ecosystem,'name':name,'version':version,'evidence':sorted(origins[(ecosystem,name,version)]),
                             'advisory_ids':ids[:100],'observed_advisory_count':len(ids),
                             'partial':incomplete})
         result.update(status='partial' if partial else 'ok',queried_versions=len(selected),entries=entries)
