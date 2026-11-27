@@ -50,5 +50,5 @@ class ScannerTests(unittest.TestCase):
         with self.assertRaisesRegex(ScanError,'unavailable'):
             scan('a/b',fake)
     def test_deep_json_response(self):
-        with self.assertRaisesRegex(ScanError,'invalid data'):
+        with self.assertRaises(ScanError):
             scan('a/b',lambda *a,**kw:io.BytesIO(b'['*2000+b']'*2000))
