@@ -119,3 +119,28 @@ class BrowserTests(unittest.TestCase):
             expect(self.page.locator('#recommendations-title')).to_be_in_viewport()
             self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'))
             self.assertEqual(self.errors,[])
+
+    def test_local_comparison_and_invalid_retry(self):
+        self.page.set_viewport_size({'width':375,'height':812})
+        requests=[]
+        self.page.on('request',lambda request:requests.append(request.url))
+        def upload(selector, report):
+            self.page.locator(selector).set_input_files({'name':'report.json','mimeType':'application/json','buffer':json.dumps(report).encode()})
+        upload('#compare-left',{'full_name':MARKUP,'stargazers_count':0,'languages':{'status':'ok'}})
+        upload('#compare-right',{'full_name':'example/right','stargazers_count':5})
+        self.page.locator('#compare-submit').click()
+        expect(self.page.locator('#compare-result')).to_be_visible()
+        expect(self.page.locator('#compare-provenance')).to_contain_text(MARKUP)
+        expect(self.page.locator('#compare-rows tr').first).to_have_text('Stars055')
+        expect(self.page.locator('#compare-rows')).to_contain_text('Unknown')
+        self.assertEqual(self.page.locator('#compare-provenance img').count(),0)
+        self.assertEqual(requests,[])
+        self.assertTrue(self.page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'))
+        upload('#compare-right',{})
+        self.page.locator('#compare-submit').click()
+        expect(self.page.locator('#compare-result')).to_be_hidden()
+        expect(self.page.locator('#compare-status')).to_contain_text('Expected a report')
+        upload('#compare-right',{'full_name':'example/right'})
+        self.page.locator('#compare-submit').click()
+        expect(self.page.locator('#compare-result')).to_be_visible()
+        self.assertEqual(self.errors,[])
