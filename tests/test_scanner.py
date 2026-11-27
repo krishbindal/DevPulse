@@ -2,6 +2,7 @@ import io
 import json
 import unittest
 from urllib.error import HTTPError
+from http.client import IncompleteRead
 from devpulse.scanner import parse_repository, scan, ScanError
 
 class ScannerTests(unittest.TestCase):
@@ -42,3 +43,12 @@ class ScannerTests(unittest.TestCase):
     def test_response_limit(self):
         with self.assertRaisesRegex(ScanError,'size limit'):
             scan('a/b',lambda *a,**k:io.BytesIO(b'x'*2_000_001))
+
+    def test_interrupted_response(self):
+        def fake(req,timeout):
+            raise IncompleteRead(b'{}')
+        with self.assertRaisesRegex(ScanError,'unavailable'):
+            scan('a/b',fake)
+    def test_deep_json_response(self):
+        with self.assertRaisesRegex(ScanError,'invalid data'):
+            scan('a/b',lambda *a,**kw:io.BytesIO(b'['*2000+b']'*2000))
