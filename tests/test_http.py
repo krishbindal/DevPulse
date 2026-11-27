@@ -51,7 +51,7 @@ class HTTPTests(unittest.TestCase):
             scanner.assert_called_once_with('a/b',include_languages=True,include_inventory=True,include_ci=True,include_dependencies=True,include_advisories=True)
     def test_cache_and_advisory_separation(self):
         report={'full_name':'a/b','scanned_at':'original timestamp'}
-        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python','practices'):
+        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python','practices','recommendations'):
             report[key]={'status':'ok'}
         with patch('devpulse.server.scan',return_value=report) as scanner:
             self.assertEqual(self.get('/api/scan?repo=A%2FB')[1]['X-DevPulse-Cache'],'MISS')
@@ -68,7 +68,7 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(headers['Retry-After'],'5')
     def test_static_opt_in_and_cache_isolation(self):
         report={'full_name':'a/b','scanned_at':'time'}
-        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python','practices'):
+        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python','practices','recommendations'):
             report[key]={'status':'ok'}
         with patch('devpulse.server.scan',return_value=report) as scanner:
             self.assertEqual(self.get('/api/scan?repo=a/b')[1]['X-DevPulse-Cache'],'MISS')

@@ -41,7 +41,7 @@ class GateTests(unittest.TestCase):
         self.assertEqual(self.gate.begin('a')[0],'start')
     def test_partial_report_not_cacheable(self):
         r={'scanned_at':'time'}
-        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python','practices'):
+        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python','practices','recommendations'):
             r[key]={'status':'ok'}
         self.assertTrue(cacheable(r))
         r['advisories']['status']='partial'

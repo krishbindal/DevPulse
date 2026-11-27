@@ -13,6 +13,7 @@ from .advisories import lookup_advisories
 from .lockfile import summarize_lockfile, MAX_LOCKFILE_BYTES
 from .static_python import review_sample
 from .practices import assess_practices
+from .recommendations import recommend
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -178,4 +179,5 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
         result['static_python']['source']=endpoint+'/git/blobs/'
         result['static_python']['tree_sha']=result['inventory'].get('tree_sha')
     result['practices']=assess_practices(result['inventory'],result['ci']) if include_inventory or include_ci else {'status':'not_analyzed'}
+    result['recommendations']=recommend(result)
     return result
