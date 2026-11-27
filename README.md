@@ -13,7 +13,7 @@ Open http://127.0.0.1:8000 and enter a public GitHub repository.
 ```sh
 python -m unittest discover -s tests -v
 ```
-Tests use mocked GitHub responses; they do not verify live API availability. The application makes unauthenticated requests to the official public GitHub API and may encounter rate limits. The open issue metric includes pull requests. Unknown analysis fields remain null instead of being guessed.
+Tests use mocked GitHub responses; they do not verify live API availability. The application makes unauthenticated requests to the official public GitHub API and may encounter rate limits. The open issue metric includes pull requests. Unknown analysis fields remain null instead of being guessed. The dashboard also requests GitHub's `/languages` endpoint; percentages use reported bytes, not line counts. A failed language request leaves metadata available and marks language data unavailable.
 
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.

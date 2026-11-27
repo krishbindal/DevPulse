@@ -26,9 +26,7 @@ def parse_repository(value):
         raise ValueError('Invalid repository name.')
     return owner, repo
 
-def scan(value, fetch=urlopen):
-    owner, repo = parse_repository(value)
-    endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
+def fetch_json(endpoint, fetch):
     request = Request(endpoint, headers={'Accept':'application/vnd.github+json', 'User-Agent':'DevPulse-Starter', 'X-GitHub-Api-Version':'2022-11-28'})
     try:
         with fetch(request, timeout=12) as response:
@@ -44,9 +42,38 @@ def scan(value, fetch=urlopen):
         raise ScanError('GitHub API returned an error.') from exc
     except (URLError, TimeoutError, ValueError) as exc:
         raise ScanError('GitHub API unavailable or returned invalid data.') from exc
+    return data
+
+
+def scan(value, fetch=urlopen, *, include_languages=False):
+    owner, repo = parse_repository(value)
+    endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
+    data = fetch_json(endpoint, fetch)
     if not isinstance(data, dict) or not isinstance(data.get('full_name'), str):
         raise ScanError('Unexpected GitHub response.')
     fields = ('full_name','description','stargazers_count','forks_count','open_issues_count','language','default_branch','archived','pushed_at','updated_at','html_url')
     result = {key: data.get(key) for key in fields}
     result.update(source=endpoint, scanned_at=datetime.now(timezone.utc).isoformat(), code_quality=None, security_findings=None, test_coverage=None, ci_status=None)
+    if include_languages:
+        source = endpoint + '/languages'
+        try:
+            raw = fetch_json(source, fetch)
+            if not isinstance(raw, dict) or any(
+                not isinstance(name, str) or type(count) is not int or count < 0
+                for name, count in raw.items()
+            ):
+                raise ScanError('Unexpected language response.')
+            total = sum(raw.values())
+            entries = [
+                {'name': name, 'bytes': count,
+                 'percent': round(count / total * 100, 2) if total else 0}
+                for name, count in sorted(raw.items(), key=lambda item: (-item[1], item[0]))
+            ]
+            result['languages'] = {'status': 'ok', 'source': source, 'total_bytes': total,
+                                   'entries': entries}
+        except ScanError as exc:
+            result['languages'] = {'status': 'unavailable', 'source': source, 'error': str(exc),
+                                   'total_bytes': None, 'entries': None}
+    else:
+        result['languages'] = {'status': 'not_analyzed', 'entries': None, 'total_bytes': None}
     return result
