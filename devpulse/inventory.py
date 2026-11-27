@@ -16,6 +16,7 @@ def summarize_tree(data):
     paths = set()
     counts = Counter()
     roots = Counter()
+    root_package = None
     manifests, workflows, docs, tests = [], [], [], []
     for entry in data['tree']:
         if not isinstance(entry, dict):
@@ -39,6 +40,8 @@ def summarize_tree(data):
         p = PurePosixPath(path)
         roots[p.parts[0] if len(p.parts) > 1 else '(root)'] += 1
         name = p.name
+        if path == 'package.json':
+            root_package = {'sha':entry.get('sha'),'size':entry.get('size')}
         if name in MANIFESTS or (name.startswith('requirements') and name.endswith('.txt')):
             manifests.append(path)
         if len(p.parts) == 3 and p.parts[:2] == ('.github','workflows') and p.suffix in ('.yml','.yaml'):
@@ -52,6 +55,7 @@ def summarize_tree(data):
                 'examples_truncated':len(items)>MAX_EXAMPLES}
     return {'status':'partial' if data['truncated'] else 'ok',
             'tree_sha':data['sha'],'truncated':data['truncated'],
+            'root_package_json':root_package,
             'observed':{k:counts[k] for k in ('files','directories','symlinks','submodules')},
             'top_directories':[{'path':k,'observed_files':v} for k,v in sorted(roots.items(),key=lambda i:(-i[1],i[0]))[:20]],
             'dependency_manifests':evidence(manifests),'workflow_files':evidence(workflows),

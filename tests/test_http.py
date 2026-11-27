@@ -42,7 +42,7 @@ class HTTPTests(unittest.TestCase):
             status,_,body=self.get('/api/scan?repo=a%2Fb')
             self.assertEqual(status,200)
             self.assertEqual(json.loads(body),{'full_name':'a/b'})
-            scanner.assert_called_once_with('a/b',include_languages=True,include_inventory=True,include_ci=True)
+            scanner.assert_called_once_with('a/b',include_languages=True,include_inventory=True,include_ci=True,include_dependencies=True)
     def test_invalid(self):
         self.assertEqual(self.get('/api/scan?repo=invalid')[0],400)
         self.assertEqual(self.get('/api/scan?repo='+'x'*2050)[0],400)

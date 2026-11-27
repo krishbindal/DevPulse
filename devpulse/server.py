@@ -29,7 +29,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_reply(400, {'error':'Query too long'})
         try:
             value = parse_qs(url.query).get('repo', [''])[0]
-            self.json_reply(200, scan(value, include_languages=True, include_inventory=True, include_ci=True))
+            self.json_reply(200, scan(value, include_languages=True, include_inventory=True, include_ci=True, include_dependencies=True))
         except ValueError as exc:
             self.json_reply(400, {'error':str(exc)})
         except ScanError as exc:
