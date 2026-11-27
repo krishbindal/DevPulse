@@ -45,7 +45,7 @@ class AdvisoryTests(unittest.TestCase):
         def fetch(*a,**kw):
             self.fail('unexpected network request')
         self.assertEqual(lookup_advisories({},fetch)['status'],'unavailable')
-        self.assertEqual(lookup_advisories({'python_dependencies':{'status':'not_found'},'npm_dependencies':{'status':'not_found'}},fetch)['status'],'not_applicable')
+        self.assertEqual(lookup_advisories({'python_dependencies':{'status':'not_found'},'npm_dependencies':{'status':'not_found'},'npm_lockfile':{'status':'not_found'}},fetch)['status'],'not_applicable')
         self.assertEqual(scan('a/b',fake({'full_name':'a/b'}),advisory_fetch=fetch)['advisories']['status'],'not_analyzed')
     def test_cap_and_dedup(self):
         data={'python_dependencies':{'entries':[{'name':f'pkg{i}','declared_version':'1.0'} for i in range(51)]+[{'name':'pkg0','declared_version':'1.0'}]}}
@@ -58,7 +58,7 @@ class AdvisoryTests(unittest.TestCase):
         self.assertEqual(r['status'],'unavailable')
 
     def test_complete_supported_manifest_scope(self):
-        data={'python_dependencies':{'status':'not_found'},'npm_dependencies':{'status':'ok','entries':[{'name':'lodash','declared_spec':'4.17.20'}]}}
+        data={'python_dependencies':{'status':'not_found'},'npm_dependencies':{'status':'ok','entries':[{'name':'lodash','declared_spec':'4.17.20'}]},'npm_lockfile':{'status':'not_found'}}
         r=lookup_advisories(data,fake({'results':[{}]}))
         self.assertEqual(r['status'],'ok')
         self.assertFalse(r['coverage_limited'])
@@ -83,3 +83,48 @@ class AdvisoryTests(unittest.TestCase):
         def fetch(*a,**kw):
             raise IncompleteRead(b'{}')
         self.assertEqual(lookup_advisories(report(),fetch)['status'],'unavailable')
+
+    def test_locked_and_declared_dedup_and_provenance(self):
+        data={'python_dependencies':{'status':'not_found'},
+              'npm_dependencies':{'status':'ok','entries':[{'name':'lodash','declared_spec':'4.17.20'}]},
+              'npm_lockfile':{'status':'ok','entries':[{'name':'lodash','locked_version':'4.17.20'},{'name':'nested','locked_version':'1.0.0'}]}}
+        def fetch(req,timeout):
+            self.assertEqual(json.loads(req.data)['queries'],[
+                {'package':{'ecosystem':'npm','name':'lodash'},'version':'4.17.20'},
+                {'package':{'ecosystem':'npm','name':'nested'},'version':'1.0.0'}])
+            return io.BytesIO(b'{"results":[{},{}]}')
+        r=lookup_advisories(data,fetch)
+        self.assertEqual(r['status'],'ok')
+        self.assertEqual(r['queried_versions'],2)
+        self.assertEqual(r['entries'][0]['evidence'],['declaration','lockfile'])
+        self.assertEqual(r['entries'][1]['evidence'],['lockfile'])
+    def test_lockfile_partial_and_unknown(self):
+        for lock in ({'status':'unavailable'},{'status':'partial','excluded_records':1},{'status':'ok','entries_truncated':True}):
+            data={'python_dependencies':{'status':'not_found'},'npm_dependencies':{'status':'ok','entries':[{'name':'a','declared_spec':'1.0.0'}]},'npm_lockfile':lock}
+            with self.subTest(lock=lock):
+                r=lookup_advisories(data,fake({'results':[{}]}))
+                self.assertEqual(r['status'],'partial')
+                self.assertTrue(r['coverage_limited'])
+    def test_lockfile_priority_under_cap(self):
+        data={'python_dependencies':{'status':'ok','entries':[{'name':f'pkg{i}','declared_version':'1.0'} for i in range(50)]},
+              'npm_dependencies':{'status':'not_found'},'npm_lockfile':{'status':'ok','entries':[{'name':'z','locked_version':'1.0.0'}]}}
+        def fetch(req,timeout):
+            self.assertEqual(json.loads(req.data)['queries'][0],{'package':{'ecosystem':'npm','name':'z'},'version':'1.0.0'})
+            return io.BytesIO(json.dumps({'results':[{}]*50}).encode())
+        r=lookup_advisories(data,fetch)
+        self.assertEqual(r['eligible_unique_versions'],51)
+        self.assertEqual(r['status'],'partial')
+        self.assertEqual(r['entries'][0]['evidence'],['lockfile'])
+    def test_lockfile_only_evidence(self):
+        data={'python_dependencies':{'status':'unavailable'},'npm_dependencies':{'status':'unavailable'},
+              'npm_lockfile':{'status':'ok','entries':[{'name':'x','locked_version':'1.2.3'}]}}
+        r=lookup_advisories(data,fake({'results':[{}]}))
+        self.assertEqual(r['status'],'partial')
+        self.assertEqual(r['queried_versions'],1)
+        self.assertEqual(r['entries'][0]['evidence'],['lockfile'])
+    def test_lockfile_ineligible_version(self):
+        data={'python_dependencies':{'status':'not_found'},'npm_dependencies':{'status':'not_found'},
+              'npm_lockfile':{'status':'ok','entries':[{'name':'x','locked_version':'1.2.3-beta'}]}}
+        r=lookup_advisories(data,lambda *a,**kw:self.fail('unexpected lookup'))
+        self.assertEqual(r['status'],'partial')
+        self.assertEqual(r['lockfile_coverage']['ineligible_pairs'],1)
