@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 from .inventory import summarize_tree
 from .ci import summarize_runs
 from .dependencies import summarize_manifest, SHA, MAX_MANIFEST_BYTES
+from .python_requirements import summarize_requirements
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -122,4 +123,23 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
                 result['npm_dependencies']['source'] = source
             except (ScanError,ValueError) as exc:
                 result['npm_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded npm manifest.'}
+    result['python_dependencies'] = {'status':'not_analyzed'}
+    if include_dependencies:
+        inv = result['inventory']
+        manifest = inv.get('root_requirements_txt')
+        if inv['status'] not in ('ok','partial'):
+            result['python_dependencies'] = {'status':'unavailable','error':'Repository inventory unavailable.'}
+        elif manifest is None:
+            result['python_dependencies'] = {'status':'not_found'} if inv['status']=='ok' else {'status':'unavailable','error':'Partial tree; root requirements presence unknown.'}
+        elif not isinstance(manifest.get('sha'),str) or not SHA.fullmatch(manifest['sha']):
+            result['python_dependencies'] = {'status':'unavailable','error':'Manifest blob SHA unavailable.'}
+        elif type(manifest.get('size')) is not int or not 0 <= manifest['size'] <= MAX_MANIFEST_BYTES:
+            result['python_dependencies'] = {'status':'unavailable','error':'Manifest size unknown or above limit.'}
+        else:
+            source = endpoint + '/git/blobs/' + manifest['sha']
+            try:
+                result['python_dependencies'] = summarize_requirements(fetch_json(source,fetch),manifest['sha'])
+                result['python_dependencies']['source'] = source
+            except (ScanError,ValueError) as exc:
+                result['python_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded requirements manifest.'}
     return result

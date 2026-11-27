@@ -11,7 +11,7 @@ SHA = re.compile(r'[a-f0-9]{40}\Z')
 # Conservative display filter: non-version specs (URLs, aliases, git, paths) are redacted.
 VERSION = re.compile(r'[~^<>=vVxX*0-9.][0-9a-zA-Z.*~^<>=| +\-]{0,127}\Z')
 
-def summarize_manifest(blob, expected_sha):
+def decode_manifest(blob, expected_sha):
     if (not isinstance(blob, dict) or blob.get('sha') != expected_sha
             or blob.get('encoding') != 'base64' or not isinstance(blob.get('content'),str)
             or type(blob.get('size')) is not int or not 0 <= blob['size'] <= MAX_MANIFEST_BYTES):
@@ -22,7 +22,10 @@ def summarize_manifest(blob, expected_sha):
     raw = base64.b64decode(encoded, validate=True)
     if len(raw) != blob['size']:
         raise ValueError('Manifest blob size mismatch.')
-    data = json.loads(raw.decode('utf-8'))
+    return raw.decode('utf-8')
+
+def summarize_manifest(blob, expected_sha):
+    data = json.loads(decode_manifest(blob, expected_sha))
     if not isinstance(data,dict):
         raise ValueError('npm manifest must be an object.')
     counts = {}
