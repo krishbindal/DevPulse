@@ -28,8 +28,10 @@ class Handler(BaseHTTPRequestHandler):
         if len(url.query) > 2048:
             return self.json_reply(400, {'error':'Query too long'})
         try:
-            value = parse_qs(url.query).get('repo', [''])[0]
-            self.json_reply(200, scan(value, include_languages=True, include_inventory=True, include_ci=True, include_dependencies=True))
+            params = parse_qs(url.query)
+            value = params.get('repo', [''])[0]
+            options = {'include_advisories':True} if params.get('advisories') == ['1'] else {}
+            self.json_reply(200, scan(value, include_languages=True, include_inventory=True, include_ci=True, include_dependencies=True, **options))
         except ValueError as exc:
             self.json_reply(400, {'error':str(exc)})
         except ScanError as exc:

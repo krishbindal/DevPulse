@@ -8,6 +8,7 @@ from .inventory import summarize_tree
 from .ci import summarize_runs
 from .dependencies import summarize_manifest, SHA, MAX_MANIFEST_BYTES
 from .python_requirements import summarize_requirements
+from .advisories import lookup_advisories
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -49,7 +50,7 @@ def fetch_json(endpoint, fetch):
     return data
 
 
-def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False, include_dependencies=False):
+def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False, include_dependencies=False, include_advisories=False, advisory_fetch=urlopen):
     owner, repo = parse_repository(value)
     endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
     data = fetch_json(endpoint, fetch)
@@ -142,4 +143,5 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
                 result['python_dependencies']['source'] = source
             except (ScanError,ValueError) as exc:
                 result['python_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded requirements manifest.'}
+    result['advisories'] = lookup_advisories(result, advisory_fetch) if include_advisories else {'status':'not_analyzed'}
     return result
