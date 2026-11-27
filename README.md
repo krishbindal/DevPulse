@@ -64,5 +64,8 @@ docker run --rm --read-only --cap-drop=ALL --security-opt=no-new-privileges --me
 
 Open http://127.0.0.1:8000. The container binds internally to all interfaces; the host port is deliberately loopback-only. The image contains only the application and Python runtime, with no browser test dependencies. The Container smoke CI builds and starts the image, checks health, UID, static assets and input rejection. The base image tag is not digest-pinned; this is local packaging, not a production security guarantee or a public deployment. Do not publish the port to the internet.
 
+## Offline repository comparison
+Download two JSON scan reports and run `python -m devpulse.compare left.json right.json`. The CLI compares observed stars, forks and open issue/PR counts, preserves scan provenance and lists analysis coverage side by side. Missing or invalid counts remain null; no quality or security ranking is produced. Input files are limited to 2 MiB each. No network calls or external AI services are used. Snapshots may have different scan times and optional analysis settings.
+
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.
