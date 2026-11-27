@@ -6,6 +6,7 @@ from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 from .inventory import summarize_tree
 from .ci import summarize_runs
+from .dependencies import summarize_manifest, SHA, MAX_MANIFEST_BYTES
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -47,7 +48,7 @@ def fetch_json(endpoint, fetch):
     return data
 
 
-def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False):
+def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False, include_dependencies=False):
     owner, repo = parse_repository(value)
     endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
     data = fetch_json(endpoint, fetch)
@@ -102,4 +103,23 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
                 result['ci'].update(source=source, branch=branch)
             except (ScanError, ValueError) as exc:
                 result['ci'] = {'status':'unavailable','source':source,'error':str(exc)}
+    result['npm_dependencies'] = {'status':'not_analyzed'}
+    if include_dependencies:
+        inv = result['inventory']
+        package = inv.get('root_package_json')
+        if inv['status'] not in ('ok','partial'):
+            result['npm_dependencies'] = {'status':'unavailable','error':'Repository inventory unavailable.'}
+        elif package is None:
+            result['npm_dependencies'] = {'status':'not_found'} if inv['status']=='ok' else {'status':'unavailable','error':'Partial tree; root manifest presence unknown.'}
+        elif not isinstance(package.get('sha'),str) or not SHA.fullmatch(package['sha']):
+            result['npm_dependencies'] = {'status':'unavailable','error':'Manifest blob SHA unavailable.'}
+        elif type(package.get('size')) is not int or not 0 <= package['size'] <= MAX_MANIFEST_BYTES:
+            result['npm_dependencies'] = {'status':'unavailable','error':'Manifest size unknown or above limit.'}
+        else:
+            source = endpoint + '/git/blobs/' + package['sha']
+            try:
+                result['npm_dependencies'] = summarize_manifest(fetch_json(source,fetch),package['sha'])
+                result['npm_dependencies']['source'] = source
+            except (ScanError,ValueError) as exc:
+                result['npm_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded npm manifest.'}
     return result

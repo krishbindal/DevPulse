@@ -21,5 +21,8 @@ The dashboard requests the default branch's recursive Git tree. It reports obser
 ## CI evidence
 The dashboard requests the latest public GitHub Actions run for the repository's default branch (one result, as returned by GitHub). It shows workflow name, status, conclusion, event, commit SHA, time and source. A successful run does not establish that every workflow passed or that the current branch head was tested. No runs is distinct from unavailable data. The overall CI health and test coverage fields remain unknown. GitHub may restrict Actions data or rate-limit unauthenticated scans.
 
+## npm declaration evidence
+If a regular root package.json is present in the tree, the scanner retrieves its immutable Git blob by SHA (up to 256 KB). It counts and lists up to 200 declarations across dependencies, devDependencies, optionalDependencies and peerDependencies. Non-version specifications are omitted from output; no package installation, execution, resolution, vulnerability scanning or monorepo enumeration occurs. A missing manifest in a truncated tree is unknown, not absent. Counts are declarations across sections, not unique or installed packages.
+
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.
