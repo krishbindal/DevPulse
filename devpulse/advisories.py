@@ -1,6 +1,7 @@
 """Opt-in, bounded OSV lookup for simple exact dependency declarations."""
 import json
 import re
+from http.client import HTTPException
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -12,20 +13,44 @@ ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z')
 
 def lookup_advisories(report, fetch=urlopen):
     candidates = set()
-    for item in report.get('python_dependencies',{}).get('entries',[]):
-        v = item['declared_version']
-        if v and PY_VERSION.fullmatch(v):
-            candidates.add(('PyPI',item['name'],v))
-    for item in report.get('npm_dependencies',{}).get('entries',[]):
-        v = item['declared_spec']
-        if v and NPM_VERSION.fullmatch(v):
-            candidates.add(('npm',item['name'],v))
+    coverage = {}
+    for key, ecosystem, version_key, version_pattern in (
+        ('python_dependencies','PyPI','declared_version',PY_VERSION),
+        ('npm_dependencies','npm','declared_spec',NPM_VERSION),
+    ):
+        source = report.get(key, {})
+        status = source.get('status','not_analyzed')
+        entries = source.get('entries') or []
+        excluded = 0
+        for item in entries:
+            version = item[version_key]
+            if version and version_pattern.fullmatch(version):
+                candidates.add((ecosystem,item['name'],version))
+            else:
+                excluded += 1
+        coverage[ecosystem] = {
+            'manifest_status':status,
+            'observed_declarations':len(entries),
+            'ineligible_observed_declarations':excluded,
+            'entries_truncated':bool(source.get('entries_truncated')),
+            'unsupported_lines':source.get('counts',{}).get('unsupported_lines',0),
+        }
+    coverage_limited = any(
+        item['manifest_status'] not in ('ok','not_found')
+        or item['entries_truncated'] or item['ineligible_observed_declarations']
+        or item['unsupported_lines']
+        for item in coverage.values()
+    )
     selected = sorted(candidates)[:MAX_QUERIES]
-    result = {'source':ENDPOINT,'scope':'exact declarations only; not installed dependencies',
+    result = {'source':ENDPOINT,'scope':'supported exact declarations in root manifests only; not installed dependencies',
               'eligible_unique_versions':len(candidates),'queried_versions':0,
-              'entries':[],'candidate_limit_reached':len(candidates)>MAX_QUERIES}
+              'entries':[],'candidate_limit_reached':len(candidates)>MAX_QUERIES,
+              'coverage':coverage,'coverage_limited':coverage_limited}
     if not selected:
-        result['status']='not_applicable'
+        if all(item['manifest_status'] in ('unavailable','not_analyzed') for item in coverage.values()):
+            result.update(status='unavailable',error='No dependency manifest evidence available to query.')
+        else:
+            result['status']='partial' if coverage_limited else 'not_applicable'
         return result
     queries = [{'package':{'ecosystem':e,'name':n},'version':v} for e,n,v in selected]
     request = Request(ENDPOINT,data=json.dumps({'queries':queries}).encode(),
@@ -39,9 +64,9 @@ def lookup_advisories(report, fetch=urlopen):
         if not isinstance(data,dict) or not isinstance(data.get('results'),list) or len(data['results'])!=len(selected):
             raise ValueError('invalid response count')
         entries=[]
-        partial=result['candidate_limit_reached']
+        partial=result['candidate_limit_reached'] or coverage_limited
         for (ecosystem,name,version), item in zip(selected,data['results']):
-            if not isinstance(item,dict) or ('vulns' not in item and any(k!='next_page_token' for k in item)):
+            if not isinstance(item,dict) or any(k not in ('vulns','next_page_token') for k in item):
                 raise ValueError('invalid result')
             vulns=item.get('vulns',[])
             if not isinstance(vulns,list) or any(not isinstance(v,dict) or not isinstance(v.get('id'),str) or not ID.fullmatch(v['id']) for v in vulns):
@@ -56,6 +81,6 @@ def lookup_advisories(report, fetch=urlopen):
                             'advisory_ids':ids[:100],'observed_advisory_count':len(ids),
                             'partial':incomplete})
         result.update(status='partial' if partial else 'ok',queried_versions=len(selected),entries=entries)
-    except (URLError,TimeoutError,ValueError,OSError):
+    except (URLError,TimeoutError,ValueError,OSError,HTTPException,RecursionError):
         result.update(status='unavailable',error='OSV lookup unavailable or returned an invalid response.')
     return result
