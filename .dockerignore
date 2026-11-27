@@ -1,0 +1,7 @@
+**
+!Dockerfile
+!devpulse/
+!devpulse/**
+**/__pycache__/
+**/*.pyc
+**/.env

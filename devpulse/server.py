@@ -1,3 +1,4 @@
+import argparse
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -73,7 +74,23 @@ class Handler(BaseHTTPRequestHandler):
         except ScanError as exc:
             self.json_reply(502, {'error':str(exc)})
 
-if __name__ == '__main__':
-    with DevPulseServer(('127.0.0.1', 8000), Handler) as server:
-        print('DevPulse: http://127.0.0.1:8000', flush=True)
+def parse_args(argv=None):
+    parser=argparse.ArgumentParser(description='DevPulse local development server')
+    parser.add_argument('--host',choices=('127.0.0.1','0.0.0.0'),default='127.0.0.1',
+                        help='Use 0.0.0.0 only inside a local container or isolated network.')
+    parser.add_argument('--port',type=int,default=8000)
+    args=parser.parse_args(argv)
+    if not 1<=args.port<=65535:
+        parser.error('port must be between 1 and 65535')
+    return args
+
+def main():
+    args=parse_args()
+    if args.host=='0.0.0.0':
+        print('Warning: local prototype; do not expose this listener publicly.',flush=True)
+    with DevPulseServer((args.host,args.port),Handler) as server:
+        print(f'DevPulse: http://{args.host}:{args.port}',flush=True)
         server.serve_forever()
+
+if __name__ == '__main__':
+    main()
