@@ -48,5 +48,8 @@ The dashboard evaluates eight indicators from observed tree and latest Actions m
 ## Dashboard layout and assets
 The dashboard groups evidence into overview, security, dependencies, engineering and inventory sections with keyboard-accessible anchor navigation, language meters and preserved report timestamps. CSS and JavaScript are served as fixed same-origin assets under a CSP that disallows inline script/style. The unit suite checks asset routes and markup targets; CI checks JavaScript syntax. Full browser and accessibility testing remain separate milestones.
 
+## Evidence-based next steps
+The report includes a deterministic recommendation engine, with no external AI service. It suggests reviewing reported advisory IDs, unsuccessful latest workflow conclusions, observed Python heuristic matches, unobserved engineering practices and coverage limitations. Each task contains structured evidence referencing the original report section. The review order is not a severity rating or a proof of exploitability. Output is capped at 40 tasks; the total generated count is preserved. Optional analysis is not enabled automatically. An empty recommendation list does not establish repository health.
+
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.
