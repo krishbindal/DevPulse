@@ -4,12 +4,14 @@
 - [x] Create responsive local dashboard and minimal scan endpoint.
 - [x] Add mocked tests, input validation, request timeout and response size limit.
 - [x] Create dedicated GitHub repository.
-- [ ] Land baseline pull request; verify live GitHub API and CI.
-- [ ] Add real repository tree and language analysis, dependency inventory, CI metadata and provenance.
+- [x] Land baseline pull request and verify CI (PR #1, run 46050193986).
+- [ ] Verify live GitHub API from application runtime.
+- [x] Implement GitHub language byte breakdown with source and explicit unavailable state (pending PR CI).
+- [ ] Add real repository tree analysis, dependency inventory, CI metadata and provenance.
 - [ ] Implement bounded static/security checks; distinguish not analyzed, no findings, and failure.
 - [ ] Add production-grade rate limiting, caching, authorization if needed, and hardened web deployment.
 - [ ] Add evidence-grounded AI explanations, adversarial tests and accessible UI review.
 - [ ] Recruiter case study, architecture diagram, real benchmarks and authorized demo deployment.
 
 ## Progress
-Local prototype created; eight local unit tests passed on mocked inputs. Public repository created by owner. Initial implementation proposed for review. No live scan or deployed service verified. CI workflow included; check GitHub Actions for actual results.
+Local prototype created; eight local unit tests passed on mocked inputs. Public repository created by owner. Baseline PR #1 merged after successful GitHub Actions run 46050193986. Language breakdown implemented on feature branch; verify CI before merge. No live scan or deployed service verified.
