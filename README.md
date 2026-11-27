@@ -18,5 +18,8 @@ Tests use mocked GitHub responses; they do not verify live API availability. The
 ## Repository inventory and report export
 The dashboard requests the default branch's recursive Git tree. It reports observed regular files, directories, symbolic links and submodules separately; it discovers dependency manifests, workflow definitions, documentation and test candidates using file names only. Truncated trees have lower-bound counts; examples are capped at 50 per category. No files are executed or cloned, no dependency versions or vulnerability findings are inferred. A failed inventory does not erase metadata. Download JSON to preserve raw results and source URLs. Metadata, languages and tree are separate requests, not a single atomic snapshot.
 
+## CI evidence
+The dashboard requests the latest public GitHub Actions run for the repository's default branch (one result, as returned by GitHub). It shows workflow name, status, conclusion, event, commit SHA, time and source. A successful run does not establish that every workflow passed or that the current branch head was tested. No runs is distinct from unavailable data. The overall CI health and test coverage fields remain unknown. GitHub may restrict Actions data or rate-limit unauthenticated scans.
+
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.

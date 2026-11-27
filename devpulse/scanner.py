@@ -5,6 +5,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 from .inventory import summarize_tree
+from .ci import summarize_runs
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -46,7 +47,7 @@ def fetch_json(endpoint, fetch):
     return data
 
 
-def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False):
+def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False):
     owner, repo = parse_repository(value)
     endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
     data = fetch_json(endpoint, fetch)
@@ -89,4 +90,16 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
                 result['inventory'].update(source=source, branch=branch)
             except (ScanError, ValueError) as exc:
                 result['inventory'] = {'status':'unavailable','source':source,'error':str(exc)}
+    result['ci'] = {'status':'not_analyzed'}
+    if include_ci:
+        branch = data.get('default_branch')
+        if not isinstance(branch, str) or not branch:
+            result['ci'] = {'status':'unavailable','error':'Default branch unavailable.'}
+        else:
+            source = endpoint + '/actions/runs?branch=' + quote(branch, safe='') + '&per_page=1'
+            try:
+                result['ci'] = summarize_runs(fetch_json(source, fetch))
+                result['ci'].update(source=source, branch=branch)
+            except (ScanError, ValueError) as exc:
+                result['ci'] = {'status':'unavailable','source':source,'error':str(exc)}
     return result
