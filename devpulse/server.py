@@ -37,12 +37,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.json_reply(400, {'error':'Query too long'})
         try:
             params = parse_qs(url.query, keep_blank_values=True, max_num_fields=8)
-            if len(params.get('repo',[]))!=1 or ('advisories' in params and params['advisories'] not in (['0'],['1'])):
-                raise ValueError('Supply one repository and an optional advisory flag of 0 or 1.')
+            if len(params.get('repo',[]))!=1 or any(flag in params and params[flag] not in (['0'],['1']) for flag in ('advisories','static')):
+                raise ValueError('Supply one repository and optional advisory/static flags of 0 or 1.')
             owner,repo=parse_repository(params['repo'][0])
             value=owner.lower()+'/'+repo.lower()
             advisory=params.get('advisories')==['1']
-            key=(value,advisory)
+            static=params.get('static')==['1']
+            key=(value,advisory,static)
             gate=self.server.scan_gate
             state,cached=gate.begin(key)
             if state=='hit':
@@ -53,6 +54,8 @@ class Handler(BaseHTTPRequestHandler):
             payload=None
             try:
                 options={'include_advisories':True} if advisory else {}
+                if static:
+                    options['include_static']=True
                 report=scan(value,include_languages=True,include_inventory=True,include_ci=True,include_dependencies=True,**options)
                 encoded=json.dumps(report).encode()
                 if cacheable(report):

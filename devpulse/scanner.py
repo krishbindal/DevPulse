@@ -11,6 +11,7 @@ from .dependencies import summarize_manifest, SHA, MAX_MANIFEST_BYTES
 from .python_requirements import summarize_requirements
 from .advisories import lookup_advisories
 from .lockfile import summarize_lockfile, MAX_LOCKFILE_BYTES
+from .static_python import review_sample
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -52,7 +53,7 @@ def fetch_json(endpoint, fetch):
     return data
 
 
-def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False, include_dependencies=False, include_advisories=False, advisory_fetch=urlopen):
+def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=False, include_ci=False, include_dependencies=False, include_advisories=False, advisory_fetch=urlopen, include_static=False):
     owner, repo = parse_repository(value)
     endpoint = 'https://api.github.com/repos/' + quote(owner, safe='') + '/' + quote(repo, safe='')
     data = fetch_json(endpoint, fetch)
@@ -165,4 +166,14 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
             except (ScanError,ValueError,RecursionError) as exc:
                 result['npm_lockfile'] = {'status':'unavailable','source':source,'error':'Unable to read a supported bounded npm lockfile.'}
     result['advisories'] = lookup_advisories(result, advisory_fetch) if include_advisories else {'status':'not_analyzed'}
+    result['static_python'] = {'status':'not_analyzed'}
+    if include_static:
+        def source_blob(sha):
+            try:
+                return fetch_json(endpoint+'/git/blobs/'+sha,fetch)
+            except ScanError as exc:
+                raise ValueError('Source blob unavailable.') from exc
+        result['static_python']=review_sample(result['inventory'],source_blob)
+        result['static_python']['source']=endpoint+'/git/blobs/'
+        result['static_python']['tree_sha']=result['inventory'].get('tree_sha')
     return result

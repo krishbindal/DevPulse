@@ -1,6 +1,8 @@
 """Bounded, non-executing inspection of GitHub tree metadata."""
 from collections import Counter
 from pathlib import PurePosixPath
+from .dependencies import SHA
+from .static_python import MAX_FILES, MAX_SOURCE_BYTES
 
 MANIFESTS = {'package.json','package-lock.json','pnpm-lock.yaml','yarn.lock',
              'pyproject.toml','requirements.txt','poetry.lock','uv.lock','Pipfile',
@@ -19,6 +21,8 @@ def summarize_tree(data):
     root_package = None
     root_requirements = None
     root_lock = None
+    python_count = 0
+    python_candidates = []
     manifests, workflows, docs, tests = [], [], [], []
     for entry in data['tree']:
         if not isinstance(entry, dict):
@@ -42,6 +46,11 @@ def summarize_tree(data):
         p = PurePosixPath(path)
         roots[p.parts[0] if len(p.parts) > 1 else '(root)'] += 1
         name = p.name
+        if p.suffix == '.py':
+            python_count += 1
+            sha,size=entry.get('sha'),entry.get('size')
+            if isinstance(sha,str) and SHA.fullmatch(sha) and type(size) is int and 0<=size<=MAX_SOURCE_BYTES:
+                python_candidates.append({'path':path,'sha':sha,'size':size})
         if path == 'package-lock.json':
             root_lock = {'sha':entry.get('sha'),'size':entry.get('size')}
         if path == 'requirements.txt':
@@ -63,6 +72,8 @@ def summarize_tree(data):
             'tree_sha':data['sha'],'truncated':data['truncated'],
             'root_package_json':root_package,'root_requirements_txt':root_requirements,
             'root_package_lock_json':root_lock,
+            'python_sources':{'observed_count':python_count,'eligible_count':len(python_candidates),
+                              'sample':sorted(python_candidates,key=lambda item:item['path'])[:MAX_FILES]},
             'observed':{k:counts[k] for k in ('files','directories','symlinks','submodules')},
             'top_directories':[{'path':k,'observed_files':v} for k,v in sorted(roots.items(),key=lambda i:(-i[1],i[0]))[:20]],
             'dependency_manifests':evidence(manifests),'workflow_files':evidence(workflows),

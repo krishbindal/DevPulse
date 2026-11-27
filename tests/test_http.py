@@ -51,7 +51,7 @@ class HTTPTests(unittest.TestCase):
             scanner.assert_called_once_with('a/b',include_languages=True,include_inventory=True,include_ci=True,include_dependencies=True,include_advisories=True)
     def test_cache_and_advisory_separation(self):
         report={'full_name':'a/b','scanned_at':'original timestamp'}
-        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories'):
+        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python'):
             report[key]={'status':'ok'}
         with patch('devpulse.server.scan',return_value=report) as scanner:
             self.assertEqual(self.get('/api/scan?repo=A%2FB')[1]['X-DevPulse-Cache'],'MISS')
@@ -62,10 +62,21 @@ class HTTPTests(unittest.TestCase):
             self.assertEqual(self.get('/api/scan?repo=a%2Fb&advisories=1')[1]['X-DevPulse-Cache'],'MISS')
             self.assertEqual(scanner.call_count,2)
     def test_busy_returns_429(self):
-        self.server.scan_gate.begin(('a/b',False))
+        self.server.scan_gate.begin(('a/b',False,False))
         status,headers,_=self.get('/api/scan?repo=a%2Fb')
         self.assertEqual(status,429)
         self.assertEqual(headers['Retry-After'],'5')
+    def test_static_opt_in_and_cache_isolation(self):
+        report={'full_name':'a/b','scanned_at':'time'}
+        for key in ('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python'):
+            report[key]={'status':'ok'}
+        with patch('devpulse.server.scan',return_value=report) as scanner:
+            self.assertEqual(self.get('/api/scan?repo=a/b')[1]['X-DevPulse-Cache'],'MISS')
+            self.assertEqual(self.get('/api/scan?repo=a/b&static=1')[1]['X-DevPulse-Cache'],'MISS')
+            scanner.assert_called_with('a/b',include_languages=True,include_inventory=True,include_ci=True,include_dependencies=True,include_static=True)
+            self.assertEqual(self.get('/api/scan?repo=a/b&static=1')[1]['X-DevPulse-Cache'],'HIT')
+            self.assertEqual(scanner.call_count,2)
+        self.assertEqual(self.get('/api/scan?repo=a/b&static=2')[0],400)
     def test_invalid(self):
         self.assertEqual(self.get('/api/scan?repo=invalid')[0],400)
         self.assertEqual(self.get('/api/scan?repo='+'x'*2050)[0],400)

@@ -47,7 +47,7 @@ class ScanGate:
 
 def cacheable(report):
     """Do not cache incomplete or failed analyses as fresh successful reports."""
-    sections=('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories')
+    sections=('languages','inventory','ci','npm_dependencies','python_dependencies','npm_lockfile','advisories','static_python')
     return (isinstance(report.get('scanned_at'),str)
             and all(isinstance(report.get(key),dict)
                     and report[key].get('status') in ('ok','not_found','not_applicable','not_analyzed')
