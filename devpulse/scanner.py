@@ -9,6 +9,7 @@ from .ci import summarize_runs
 from .dependencies import summarize_manifest, SHA, MAX_MANIFEST_BYTES
 from .python_requirements import summarize_requirements
 from .advisories import lookup_advisories
+from .lockfile import summarize_lockfile, MAX_LOCKFILE_BYTES
 
 PART = re.compile(r'[A-Za-z0-9_.-]{1,100}\Z')
 
@@ -143,5 +144,24 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
                 result['python_dependencies']['source'] = source
             except (ScanError,ValueError) as exc:
                 result['python_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded requirements manifest.'}
+    result['npm_lockfile'] = {'status':'not_analyzed'}
+    if include_dependencies:
+        inv = result['inventory']
+        manifest = inv.get('root_package_lock_json')
+        if inv['status'] not in ('ok','partial'):
+            result['npm_lockfile'] = {'status':'unavailable','error':'Repository inventory unavailable.'}
+        elif manifest is None:
+            result['npm_lockfile'] = {'status':'not_found'} if inv['status']=='ok' else {'status':'unavailable','error':'Partial tree; root lockfile presence unknown.'}
+        elif not isinstance(manifest.get('sha'),str) or not SHA.fullmatch(manifest['sha']):
+            result['npm_lockfile'] = {'status':'unavailable','error':'Lockfile blob SHA unavailable.'}
+        elif type(manifest.get('size')) is not int or not 0 <= manifest['size'] <= MAX_LOCKFILE_BYTES:
+            result['npm_lockfile'] = {'status':'unavailable','error':'Lockfile size unknown or above 1 MB limit.'}
+        else:
+            source = endpoint + '/git/blobs/' + manifest['sha']
+            try:
+                result['npm_lockfile'] = summarize_lockfile(fetch_json(source,fetch),manifest['sha'])
+                result['npm_lockfile']['source'] = source
+            except (ScanError,ValueError,RecursionError) as exc:
+                result['npm_lockfile'] = {'status':'unavailable','source':source,'error':'Unable to read a supported bounded npm lockfile.'}
     result['advisories'] = lookup_advisories(result, advisory_fetch) if include_advisories else {'status':'not_analyzed'}
     return result
