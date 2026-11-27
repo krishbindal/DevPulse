@@ -3,6 +3,7 @@ from collections import Counter
 from pathlib import PurePosixPath
 from .dependencies import SHA
 from .static_python import MAX_FILES, MAX_SOURCE_BYTES
+from .practices import document_kind
 
 MANIFESTS = {'package.json','package-lock.json','pnpm-lock.yaml','yarn.lock',
              'pyproject.toml','requirements.txt','poetry.lock','uv.lock','Pipfile',
@@ -24,6 +25,7 @@ def summarize_tree(data):
     python_count = 0
     python_candidates = []
     manifests, workflows, docs, tests = [], [], [], []
+    practice_docs={key:[] for key in ('readme','license','security','contributing')}
     for entry in data['tree']:
         if not isinstance(entry, dict):
             raise ValueError('Invalid tree entry.')
@@ -46,6 +48,9 @@ def summarize_tree(data):
         p = PurePosixPath(path)
         roots[p.parts[0] if len(p.parts) > 1 else '(root)'] += 1
         name = p.name
+        kind=document_kind(path)
+        if kind:
+            practice_docs[kind].append(path)
         if p.suffix == '.py':
             python_count += 1
             sha,size=entry.get('sha'),entry.get('size')
@@ -76,5 +81,6 @@ def summarize_tree(data):
                               'sample':sorted(python_candidates,key=lambda item:item['path'])[:MAX_FILES]},
             'observed':{k:counts[k] for k in ('files','directories','symlinks','submodules')},
             'top_directories':[{'path':k,'observed_files':v} for k,v in sorted(roots.items(),key=lambda i:(-i[1],i[0]))[:20]],
+            'practice_documents':{key:evidence(items) for key,items in practice_docs.items()},
             'dependency_manifests':evidence(manifests),'workflow_files':evidence(workflows),
             'documentation_files':evidence(docs),'test_file_candidates':evidence(tests)}
