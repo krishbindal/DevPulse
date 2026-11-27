@@ -9,12 +9,13 @@
 - [x] Implement GitHub language byte breakdown with source and explicit unavailable state (PR #2, CI run 46050493201).
 - [x] Implement bounded tree inventory, manifest and workflow file discovery, and JSON export (PR #3, CI run 46050891136).
 - [x] Implement latest public default-branch Actions run metadata (PR #4, CI run 46051011803).
-- [x] Implement root npm dependency declarations from an immutable manifest blob (pending PR CI).
-- [ ] Resolve supported lockfile versions and add Python dependency evidence; aggregate CI evidence only when justified.
+- [x] Implement root npm dependency declarations from an immutable manifest blob (PR #5, CI run 46051141619).
+- [x] Implement narrow root Python requirements declaration analysis (pending PR CI).
+- [ ] Parse lockfile versions and additional Python manifest formats; aggregate CI evidence only when justified.
 - [ ] Implement bounded static/security checks; distinguish not analyzed, no findings, and failure.
 - [ ] Add production-grade rate limiting, caching, authorization if needed, and hardened web deployment.
 - [ ] Add evidence-grounded AI explanations, adversarial tests and accessible UI review.
 - [ ] Recruiter case study, architecture diagram, real benchmarks and authorized demo deployment.
 
 ## Progress
-Local prototype created; eight local unit tests passed on mocked inputs. Public repository created by owner. Baseline PR #1 merged after successful GitHub Actions run 46050193986. Language breakdown merged after successful CI run 46050493201. Repository inventory and JSON export merged after successful CI run 46050891136. Latest Actions metadata and HTTP integration tests merged after successful CI run 46051011803. Root npm declarations proposed. No live scan or deployed service verified.
+Local prototype created; eight local unit tests passed on mocked inputs. Public repository created by owner. Baseline PR #1 merged after successful GitHub Actions run 46050193986. Language breakdown merged after successful CI run 46050493201. Repository inventory and JSON export merged after successful CI run 46050891136. Latest Actions metadata and HTTP integration tests merged after successful CI run 46051011803. Root npm declarations merged after successful CI run 46051141619 (41 tests). Root Python requirements evidence proposed. No live scan or deployed service verified.

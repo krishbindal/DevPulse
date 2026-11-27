@@ -24,5 +24,8 @@ The dashboard requests the latest public GitHub Actions run for the repository's
 ## npm declaration evidence
 If a regular root package.json is present in the tree, the scanner retrieves its immutable Git blob by SHA (up to 256 KB). It counts and lists up to 200 declarations across dependencies, devDependencies, optionalDependencies and peerDependencies. Non-version specifications are omitted from output; no package installation, execution, resolution, vulnerability scanning or monorepo enumeration occurs. A missing manifest in a truncated tree is unknown, not absent. Counts are declarations across sections, not unique or installed packages.
 
+## Python requirement evidence
+Reads a regular root requirements.txt by immutable Git blob SHA, within the same 256 KB limit. Recognizes a narrow subset: bare package names and simple exact pins (name==version). Unsupported lines, including ranges, markers, extras, URLs, includes, hashes and options, are counted without echoing their contents. No pip execution, include resolution, installed version inference or vulnerability claims. Partial status indicates unsupported lines or capped output (200 entries). Other Python manifest formats are not yet parsed.
+
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.
