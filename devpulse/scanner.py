@@ -1,6 +1,7 @@
 import json
 import re
 from datetime import datetime, timezone
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
@@ -46,7 +47,7 @@ def fetch_json(endpoint, fetch):
         if exc.code in (403, 429):
             raise ScanError('GitHub denied access or rate limited the request.') from exc
         raise ScanError('GitHub API returned an error.') from exc
-    except (URLError, TimeoutError, ValueError) as exc:
+    except (URLError, TimeoutError, ValueError, OSError, HTTPException, RecursionError) as exc:
         raise ScanError('GitHub API unavailable or returned invalid data.') from exc
     return data
 
@@ -123,7 +124,7 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
             try:
                 result['npm_dependencies'] = summarize_manifest(fetch_json(source,fetch),package['sha'])
                 result['npm_dependencies']['source'] = source
-            except (ScanError,ValueError) as exc:
+            except (ScanError,ValueError,RecursionError) as exc:
                 result['npm_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded npm manifest.'}
     result['python_dependencies'] = {'status':'not_analyzed'}
     if include_dependencies:
@@ -142,7 +143,7 @@ def scan(value, fetch=urlopen, *, include_languages=False, include_inventory=Fal
             try:
                 result['python_dependencies'] = summarize_requirements(fetch_json(source,fetch),manifest['sha'])
                 result['python_dependencies']['source'] = source
-            except (ScanError,ValueError) as exc:
+            except (ScanError,ValueError,RecursionError) as exc:
                 result['python_dependencies'] = {'status':'unavailable','source':source,'error':'Unable to read a valid bounded requirements manifest.'}
     result['npm_lockfile'] = {'status':'not_analyzed'}
     if include_dependencies:
