@@ -6,6 +6,8 @@ from .scanner import scan, ScanError, parse_repository
 from .scan_gate import ScanGate, cacheable
 
 PAGE = Path(__file__).with_name('index.html').read_bytes()
+ASSETS = {'/assets/dashboard.css':(Path(__file__).with_name('dashboard.css').read_bytes(),'text/css; charset=utf-8'),
+          '/assets/dashboard.js':(Path(__file__).with_name('dashboard.js').read_bytes(),'text/javascript; charset=utf-8')}
 class DevPulseServer(ThreadingHTTPServer):
     def __init__(self, address, handler):
         self.scan_gate=ScanGate()
@@ -18,7 +20,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff')
-        self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+        self.send_header('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
         for name,value in (extra_headers or {}).items():
             self.send_header(name,value)
         self.end_headers()
@@ -29,6 +31,9 @@ class Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if url.path == '/':
             return self.reply(200, PAGE, 'text/html; charset=utf-8')
+        if url.path in ASSETS:
+            body,content_type=ASSETS[url.path]
+            return self.reply(200,body,content_type)
         if url.path == '/health':
             return self.json_reply(200, {'status':'ok'})
         if url.path != '/api/scan':

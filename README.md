@@ -45,5 +45,8 @@ Enable the dashboard checkbox or API parameter static=1. From the observed Git t
 ## Engineering practice evidence
 The dashboard evaluates eight indicators from observed tree and latest Actions metadata: README, license file, security policy, contribution guide, test candidates, workflow files, dependency manifests and latest workflow run. Recognized document locations are root, .github and docs; recognized names are exact common document names and extensions. Each indicator reports observed, not observed (within a complete returned tree or run response) or unknown, with up to five example paths. File presence is not evidence of content quality, successful CI, test coverage, valid licensing or security. No synthetic repository quality score is assigned. The JSON report includes the same checklist and source identifiers.
 
+## Dashboard layout and assets
+The dashboard groups evidence into overview, security, dependencies, engineering and inventory sections with keyboard-accessible anchor navigation, language meters and preserved report timestamps. CSS and JavaScript are served as fixed same-origin assets under a CSP that disallows inline script/style. The unit suite checks asset routes and markup targets; CI checks JavaScript syntax. Full browser and accessibility testing remain separate milestones.
+
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.

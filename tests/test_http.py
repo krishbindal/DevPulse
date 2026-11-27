@@ -90,3 +90,17 @@ class HTTPTests(unittest.TestCase):
             self.assertEqual(json.loads(body),{'error':'Unavailable'})
         with patch('devpulse.server.scan',return_value={'full_name':'a/b'}):
             self.assertEqual(self.get('/api/scan?repo=a%2Fb')[0],200)
+
+    def test_dashboard_assets_and_strict_csp(self):
+        status,headers,body=self.get('/')
+        self.assertEqual(status,200)
+        self.assertNotIn("'unsafe-inline'",headers['Content-Security-Policy'])
+        self.assertIn(b'src="/assets/dashboard.js"',body)
+        self.assertIn(b'href="/assets/dashboard.css"',body)
+        for path,mime in (('/assets/dashboard.css','text/css'),('/assets/dashboard.js','text/javascript')):
+            status,headers,body=self.get(path)
+            self.assertEqual(status,200)
+            self.assertTrue(headers['Content-Type'].startswith(mime))
+            self.assertEqual(headers['X-Content-Type-Options'],'nosniff')
+            self.assertTrue(body)
+        self.assertEqual(self.get('/assets/unknown.js')[0],404)
