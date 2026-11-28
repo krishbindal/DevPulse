@@ -69,3 +69,6 @@ Download two JSON scan reports and run `python -m devpulse.compare left.json rig
 
 ## Scope
 This is a local prototype, not a production server. Do not expose it publicly before implementing rate limiting, stronger server infrastructure and production security controls. No account tokens are accepted. The architecture deliberately avoids databases and frameworks until needed. See ROADMAP.md.
+
+## Browser-local comparison
+Choose two exported JSON reports in the dashboard comparison panel. Each file is limited to 2 MiB; no upload or API request is made. The table compares nonnegative safe integer counts and recognized analysis statuses, preserving source and timestamp strings. Unknown values are not treated as zero. The browser uses JavaScript safe integers; larger integers are unknown rather than rounded into a comparison. Separate snapshots do not establish quality or security rankings.
